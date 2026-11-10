@@ -1,3 +1,4 @@
+
 package tw.edu.pu.csim.peichi.canvas
 
 import android.os.Bundle
@@ -6,16 +7,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -24,16 +22,19 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.res.imageResource
-import androidx.compose.ui.tooling.preview.Preview
+import kotlinx.coroutines.delay
 import tw.edu.pu.csim.peichi.canvas.ui.theme.CanvasTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         setContent {
             CanvasTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(
+                    modifier = Modifier.fillMaxSize()
+                ) { innerPadding ->
                     CanvasScreen(
                         modifier = Modifier.padding(innerPadding)
                     )
@@ -45,56 +46,114 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun CanvasScreen(modifier: Modifier = Modifier) {
-    // 1. 修正 remember 拼字錯誤，並正確宣告在 Composable 函式內部
-    var canvasWidth by remember { mutableStateOf(0f) }
-    var canvasHeight by remember { mutableStateOf(0f) }
 
-    // 2. 修正圖片載入語法，移除多餘的 id =
-    val minionsImage: ImageBitmap = ImageBitmap.imageResource(R.drawable.minions)
+    var canvasWidth by remember {
+        mutableFloatStateOf(0f)
+    }
+
+    var canvasHeight by remember {
+        mutableFloatStateOf(0f)
+    }
+
+    var minionsX by remember {
+        mutableFloatStateOf(0f)
+    }
+
+    var minionsY by remember {
+        mutableFloatStateOf(0f)
+    }
+
+    var gameOver by remember {
+        mutableStateOf(true)
+    }
+
+    val minionsImage: ImageBitmap =
+        ImageBitmap.imageResource(R.drawable.minions)
+
+    // 控制小小兵移動
+    LaunchedEffect(gameOver) {
+
+        while (!gameOver) {
+
+            delay(30L)
+
+            // 往右下角移動
+            minionsX += 2f
+            minionsY += 5f
+
+            // 碰到右邊或底端，回到左上角
+            if (minionsX + minionsImage.width >= canvasWidth ||
+                minionsY + minionsImage.height >= canvasHeight
+            ) {
+                minionsX = 0f
+                minionsY = 0f
+            }
+        }
+    }
 
     Box(
         modifier = modifier.fillMaxSize()
     ) {
+
         Canvas(
             modifier = Modifier.fillMaxSize()
         ) {
-            // 3. 修正 size.width/height 擺放位置，必須寫在 Canvas 內部（DrawScope）
+
+            // 取得畫布大小
             canvasWidth = size.width
             canvasHeight = size.height
 
+            // 畫圓形
             drawCircle(
-                Color.Magenta,
-                100f,
-                Offset(100f, 100f)
+                color = Color.Magenta,
+                radius = 100f,
+                center = Offset(300f, 800f)
             )
+
+            // 畫矩形
             drawRect(
-                Color.Blue,
-                Offset(300f, 200f),
-                Size(200f, 200f),
-                style = Stroke(width = 5f) // 使用 style 控制外框樣式
+                color = Color.Blue,
+                topLeft = Offset(300f, 200f),
+                size = Size(200f, 200f),
+                style = Stroke(width = 5f)
             )
+
+            // 畫線
             drawLine(
                 color = Color.Red,
-                start = Offset(x = 200f, y = 800f),
-                end = Offset(x = size.width, y = size.height),
+                start = Offset(200f, 800f),
+                end = Offset(size.width, size.height),
                 strokeWidth = 10f
             )
 
-            // 取得小小兵圖檔的寬度與高度
-            val minionsWidth = minionsImage.width
-            val minionsHeight = minionsImage.height
-
-            // 置中公式：（畫布寬高 - 圖片寬高）/ 2
-            val offsetX = (size.width - minionsWidth) / 2f
-            val offsetY = (size.height - minionsHeight) / 2f
-
-            // 將畫布起點移至置中位置後畫圖
-            translate(left = offsetX, top = offsetY) {
+            // 繪製小小兵
+            translate(
+                left = minionsX,
+                top = minionsY
+            ) {
                 drawImage(minionsImage)
             }
         }
 
-        // 顯示畫布寬高的文字
-        Text(text = "畫布寬度: $canvasWidth, 長度: $canvasHeight")
+        // 顯示畫布資訊及控制按鈕
+        Column {
+
+            Text(
+                text = "畫布寬度: $canvasWidth, 長度: $canvasHeight"
+            )
+
+            Button(
+                onClick = {
+                    gameOver = !gameOver
+                }
+            ) {
+
+                if (gameOver) {
+                    Text("開始遊戲")
+                } else {
+                    Text("停止遊戲")
+                }
+            }
+        }
     }
 }
